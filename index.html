@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>가위바위보</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<style>
+:root{--bg:#e6ecf8;--card:#fff;--ink:#1b2a4a;--mute:#5d6b88;--win:#1f9d68;--lose:#d6455d;--draw:#c28a00;--btn:#dfe7f6;--btn-h:#cbd8f0;--accent:#3556d8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a2b;--card:#1e2640;--ink:#eef2ff;--mute:#9aa7c7;--win:#46d494;--lose:#ff7d93;--draw:#f0c14b;--btn:#2a3558;--btn-h:#36447a;--accent:#7f9bff}}
+:root[data-theme="dark"]{--bg:#141a2b;--card:#1e2640;--ink:#eef2ff;--mute:#9aa7c7;--win:#46d494;--lose:#ff7d93;--draw:#f0c14b;--btn:#2a3558;--btn-h:#36447a;--accent:#7f9bff}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Jua","Apple SD Gothic Neo","Malgun Gothic",sans-serif;display:flex;justify-content:center;padding:20px 16px}
+main{width:100%;max-width:440px}
+h1{font-size:2rem;margin:0 0 4px;text-align:center}
+.sub{text-align:center;color:var(--mute);margin:0 0 18px}
+.score{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.score div{background:var(--card);border-radius:14px;padding:10px 4px;text-align:center}
+.score b{display:block;font-size:1.6rem}
+.score span{font-size:.9rem;color:var(--mute)}
+.w b{color:var(--win)}.l b{color:var(--lose)}.d b{color:var(--draw)}
+.arena{background:var(--card);border-radius:20px;padding:18px 12px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;text-align:center;margin-bottom:16px}
+.side small{color:var(--mute);display:block;margin-bottom:6px}
+.hand{font-size:4.2rem;line-height:1;display:inline-block}
+.vs{color:var(--mute);padding:0 6px}
+.shake{animation:shake .5s}
+@keyframes shake{0%,100%{transform:translateY(0)}25%{transform:translateY(-14px) rotate(-8deg)}50%{transform:translateY(0)}75%{transform:translateY(-10px) rotate(8deg)}}
+@media(prefers-reduced-motion:reduce){.shake{animation:none}}
+#msg{text-align:center;font-size:1.5rem;min-height:2.2rem;margin:0 0 14px}
+.picks{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.picks button{border:0;background:var(--btn);color:var(--ink);border-radius:16px;padding:14px 0;font:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:1rem}
+.picks button span{font-size:2.4rem;line-height:1}
+.picks button:hover{background:var(--btn-h)}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.picks button:disabled{opacity:.6;cursor:default}
+.reset{display:block;margin:16px auto 0;border:0;background:none;color:var(--mute);font:inherit;text-decoration:underline;cursor:pointer}
+#log{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:14px;min-height:20px}
+#log i{font-style:normal;width:12px;height:12px;border-radius:50%}
+</style>
+</head>
+<body>
+<main>
+<h1>가위바위보</h1>
+<p class="sub">컴퓨터와 한 판 붙어보세요</p>
+<div class="score">
+<div class="w"><b id="w">0</b><span>승</span></div>
+<div class="d"><b id="d">0</b><span>무</span></div>
+<div class="l"><b id="l">0</b><span>패</span></div>
+</div>
+<div class="arena">
+<div class="side"><small>나</small><span class="hand" id="me">❔</span></div>
+<div class="vs">vs</div>
+<div class="side"><small>컴퓨터</small><span class="hand" id="cpu">❔</span></div>
+</div>
+<p id="msg">무엇을 낼까요?</p>
+<div class="picks">
+<button data-k="0"><span>✌️</span>가위</button>
+<button data-k="1"><span>✊</span>바위</button>
+<button data-k="2"><span>✋</span>보</button>
+</div>
+<div id="log" aria-label="최근 결과"></div>
+<button class="reset" id="reset">기록 초기화</button>
+</main>
+<script>
+(function(){
+var E=["✌️","✊","✋"],N=["가위","바위","보"];
+var s={w:0,d:0,l:0},hist=[],busy=false;
+var me=document.getElementById("me"),cpu=document.getElementById("cpu"),msg=document.getElementById("msg"),log=document.getElementById("log");
+var btns=document.querySelectorAll(".picks button");
+function render(){
+document.getElementById("w").textContent=s.w;
+document.getElementById("d").textContent=s.d;
+document.getElementById("l").textContent=s.l;
+log.innerHTML="";
+hist.slice(-10).forEach(function(r){
+var i=document.createElement("i");
+i.style.background=r==="w"?"var(--win)":r==="l"?"var(--lose)":"var(--draw)";
+log.appendChild(i);
+});
+}
+function play(k){
+if(busy)return;
+busy=true;
+btns.forEach(function(b){b.disabled=true});
+msg.textContent="가위… 바위… 보!";
+me.textContent="✊";cpu.textContent="✊";
+me.classList.remove("shake");cpu.classList.remove("shake");
+void me.offsetWidth;
+me.classList.add("shake");cpu.classList.add("shake");
+setTimeout(function(){
+var c=Math.floor(Math.random()*3);
+me.textContent=E[k];cpu.textContent=E[c];
+var d=(k-c+3)%3,r;
+if(d===0){r="d";msg.textContent="비겼어요!";msg.style.color="var(--draw)"}
+else if(d===2){r="w";msg.textContent="이겼어요! 🎉";msg.style.color="var(--win)"}
+else{r="l";msg.textContent=N[c]+"에 졌어요";msg.style.color="var(--lose)"}
+s[r]++;hist.push(r);render();
+busy=false;
+btns.forEach(function(b){b.disabled=false});
+},550);
+}
+btns.forEach(function(b){b.addEventListener("click",function(){play(+b.dataset.k)})});
+document.getElementById("reset").addEventListener("click",function(){
+s={w:0,d:0,l:0};hist=[];me.textContent="❔";cpu.textContent="❔";
+msg.textContent="무엇을 낼까요?";msg.style.color="";render();
+});
+render();
+})();
+</script>
+</body>
+</html>
